@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Search Modal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script type="module">
+    import { createApp, ref, computed } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
+
+    // Load templates and styles first
+    const [appContent, modalContent] = await Promise.all([
+      fetch('./src/App.vue').then(r => r.text()),
+      fetch('./src/components/CustomerSearchModal.vue').then(r => r.text())
+    ])
+
+    // Extract templates and styles
+    const appTemplate = appContent.match(/<template>([\s\S]*)<\/template>/)[1]
+    const modalTemplate = modalContent.match(/<template>([\s\S]*)<\/template>/)[1]
+    const appStyle = appContent.match(/<style>([\s\S]*)<\/style>/)[1]
+    const modalStyle = modalContent.match(/<style[^>]*>([\s\S]*)<\/style>/)[1]
+
+    // Add styles to document
+    const styleElement = document.createElement('style')
+    styleElement.textContent = appStyle + '\n' + modalStyle
+    document.head.appendChild(styleElement)
+
+    // Import customers data
+    const customersModule = await import('./src/data/customers.js')
+    const customers = customersModule.customers
+
+    // Define CustomerSearchModal component
+    const CustomerSearchModal = {
+      template: modalTemplate,
+      emits: ['close'],
+      setup(props, { emit }) {
+        const searchQuery = ref('')
+        const customersList = ref(customers.result)
+
+        const filteredCustomers = computed(() => {
+          if (!searchQuery.value) return customersList.value
+          const query = searchQuery.value.toLowerCase()
+          return customersList.value.filter(customer => 
+            customer.name.toLowerCase().includes(query) ||
+            customer.datasource_id.toLowerCase().includes(query)
+          )
+        })
+
+        const searchCustomers = () => {
+          // The filtering is handled by the computed property
+          // This method exists to satisfy the template's @input handler
+        }
+
+        const getInitials = (name) => {
+          return name
+            .split(' ')
+            .slice(0, 2)
+            .map(word => word[0])
+            .join('')
+            .toUpperCase()
+        }
+
+        const getRandomColor = (id) => {
+          const colors = ['#34D399', '#60A5FA', '#F472B6', '#A78BFA', '#FBBF24']
+          const index = parseInt(id.replace(/\D/g, '')) % colors.length
+          return colors[index]
+        }
+
+        const startReturn = (customer) => {
+          console.log('Starting return for customer:', customer)
+        }
+
+        const closeModal = () => {
+          emit('close')
+        }
+
+        return {
+          searchQuery,
+          customers: customersList,
+          filteredCustomers,
+          getInitials,
+          getRandomColor,
+          startReturn,
+          closeModal,
+          searchCustomers
+        }
+      }
+    }
+
+    // Define App component
+    const App = {
+      template: appTemplate,
+      components: {
+        CustomerSearchModal
+      },
+      setup() {
+        const showModal = ref(false)
+        return {
+          showModal
+        }
+      }
+    }
+
+    // Initialize Vue app
+    const app = createApp({
+      components: {
+        CustomerSearchModal
+      },
+      template: appTemplate,
+      setup() {
+        const showModal = ref(false)
+        return {
+          showModal
+        }
+      }
+    })
+
+    // Mount the app
+    app.mount('#app')
+  </script>
+</body>
+</html>
